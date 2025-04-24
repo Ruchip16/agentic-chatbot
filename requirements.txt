@@ -1,0 +1,9 @@
+langchain
+openai
+ollama
+chromadb
+faiss-cpu
+streamlit
+python-dotenv
+slack-sdk
+pyyaml

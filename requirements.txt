@@ -7,3 +7,7 @@ streamlit
 python-dotenv
 slack-sdk
 pyyaml
+llama-index-llms-ollama
+llama-index-embeddings-huggingface
+llama-index-readers-file
+PyMuPDF

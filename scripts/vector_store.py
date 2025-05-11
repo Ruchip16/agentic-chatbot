@@ -1,6 +1,9 @@
+"""The Vector store service."""
+
 import argparse
 import logging
 import pathlib
+from typing import Any, List
 import yaml
 
 from ingest_data import ingest
@@ -9,23 +12,36 @@ from delete_knowledge import delete_knowledge
 
 logger = logging.getLogger(__name__)
 
-def parse_config(path: pathlib.Path):
-    """Parse the configuration file."""
-    if path.is_dir():
-        raise ValueError(f"Config file {path} is a directory")
 
-    with open(path, "r") as f:
+def parse_config(path: pathlib.Path) -> dict[str, Any]:
+    """Parse the YAML configuration file."""
+    if not path.exists():
+        raise FileNotFoundError(f"Config file {path} does not exist")
+    if path.is_dir():
+        raise ValueError(f"Expected a file but got a directory: {path}")
+
+    with path.open("r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
+
+    if not isinstance(config, dict):
+        raise ValueError(f"Invalid configuration format in {path}")
 
     return config
 
-def main(args: argparse.Namespace):
+
+def main(args: argparse.Namespace) -> None:
+    """
+    Ingests multiple document collections into a vector store
+    using the configuration file specified in `args.config`.
+
+    Args:
+        args: Parsed arguments containing the config file path.
+    """
     config_path = args.config
     config: dict = parse_config(config_path)
     ingest_threads = config.get("ingest_threads", 8)
     collections = config.get("collections", [])
-    logs_folder_id = config.get("logs_folder_id", None)
-    errors = []
+    errors: List[Exception] = []
     for collection in collections:
         try:
             name = collection.get("id")
@@ -36,13 +52,16 @@ def main(args: argparse.Namespace):
             if any(value is None for value in required_values):
                 required_keys = ["name", "mode", "chunk_size", "chunk_overlap"]
                 raise ValueError(f"Missing required keys in collection {required_keys}")
-            embedding_model_name = collection.get("embedding_model", "sentence-transformers/all-MiniLM-L6-v2")
+            embedding_model_name = collection.get(
+                "embedding_model", "sentence-transformers/all-MiniLM-L6-v2"
+            )
             metadata = collection.get("metadata", {})
             sources = collection.get("sources", [])
-            meta_lookup = {}
-            for source in sources:
-                source_meta_lookup = fetch_source(**source)
-                meta_lookup = meta_lookup | source_meta_lookup
+            meta_lookup: dict[pathlib.Path, dict[Any, Any]] = {}
+            # for source in sources:
+                # source_meta_lookup = fetch_source(**source)
+            source_meta_lookup = fetch_source()
+            meta_lookup = meta_lookup | source_meta_lookup
             ingest(
                 meta_lookup=meta_lookup,
                 collection_name=name,
@@ -52,20 +71,27 @@ def main(args: argparse.Namespace):
                 embedding_model_name=embedding_model_name,
                 mode=mode,
                 collection_metadata=metadata,
-                logs_folder_id=logs_folder_id,
             )
         except Exception as e:
-            raise e
+            logger.error("Failed to ingest collection %s: %s", collection.get("id", "unknown"), e)
+            errors.append(e)
         finally:
             delete_knowledge()
 
-    if len(errors):
-        raise Exception(errors)
-
+    if errors:
+        error_messages = "\n".join(str(e) for e in errors)
+        raise RuntimeError(f"Ingest failed for {len(errors)} collection(s):\n{error_messages}")
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+    )
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=pathlib.Path, help="Path to config file.", default=pathlib.Path("config.yaml"))
-    args = parser.parse_args()
-    main(args)
+    parser.add_argument(
+        "--config",
+        type=pathlib.Path,
+        help="Path to config file.",
+        default=pathlib.Path("config.yaml"),
+    )
+    main(parser.parse_args())

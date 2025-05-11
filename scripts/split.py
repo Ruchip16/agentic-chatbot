@@ -119,7 +119,9 @@ def load_documents(source_dir: pathlib.Path, ingest_threads: int) -> list[Docume
     return docs
 
 
-def split_document(document: Document, file_extension: str, chunk_size: int, chunk_overlap: int):
+def split_document(
+    document: Document, file_extension: str, chunk_size: int, chunk_overlap: int
+):
     """Split a document into chunks."""
     ext_metadata = DOCUMENT_MAP.get(file_extension)
     # If there is no language defined, don't chunk the text
@@ -130,9 +132,13 @@ def split_document(document: Document, file_extension: str, chunk_size: int, chu
         language = ext_metadata["language"]
         # If the language is None, use the basic splitter
         if language is None:
-            splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+            splitter = RecursiveCharacterTextSplitter(
+                chunk_size=chunk_size, chunk_overlap=chunk_overlap
+            )
         # Otherwise use the specific language
         else:
-            splitter = RecursiveCharacterTextSplitter.from_language(language=language, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+            splitter = RecursiveCharacterTextSplitter.from_language(
+                language=language, chunk_size=chunk_size, chunk_overlap=chunk_overlap
+            )
         chunks = splitter.split_documents(documents=[document])
     return chunks

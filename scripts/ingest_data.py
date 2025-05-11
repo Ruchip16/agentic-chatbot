@@ -23,16 +23,13 @@ from split import load_documents, split_document
 logger = logging.getLogger(__name__)
 
 
-def get_embedder(embedding_model_name: str):
-    """Define embedder to convert text into vectors."""
-    model_kwargs = {"device": DEVICE}
-    embedder = HuggingFaceEmbeddings(
+def get_embedder(embedding_model_name: str) -> HuggingFaceEmbeddings:
+    """Initialize an embedder to convert text into vectors."""
+    return HuggingFaceEmbeddings(
         model_name=embedding_model_name,
-        model_kwargs=model_kwargs,
+        model_kwargs={"device": DEVICE},
         show_progress=True,
     )
-
-    return embedder
 
 
 def ingest(
@@ -44,7 +41,6 @@ def ingest(
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
     mode: str = "overwrite",
     collection_metadata: dict = {},
-    logs_folder_id: str = None,
 ):
     """Load documents into a vectorstore."""
     # Get documents
@@ -59,7 +55,9 @@ def ingest(
         file_name = source.stem
         document.metadata["_source"] = document.metadata["source"]
         document.metadata["source"] = file_name
-        chunks = split_document(document, extension, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        chunks = split_document(
+            document, extension, chunk_size=chunk_size, chunk_overlap=chunk_overlap
+        )
         # Attach metadata to each chunk
         for chunk in chunks:
             path_metadata = meta_lookup.get(source, {})
@@ -101,11 +99,15 @@ def ingest(
         logger.info(f"Collection {collection_name} created")
 
     # Load the documents
-    logger.info(f"Loading {len(all_documents)} embeddings to {PGVECTOR_HOST} - {PGVECTOR_DATABASE_NAME} - {collection_name}")
+    logger.info(
+        f"Loading {len(all_documents)} embeddings to {PGVECTOR_HOST} - {PGVECTOR_DATABASE_NAME} - {collection_name}"
+    )
     db.add_documents(documents=all_documents)
     logger.info(f"Successfully loaded {len(all_documents)} embeddings")
 
-    directory_source_url_chunks = [list(origin_url) + [chunks] for origin_url, chunks in origin_urls.items()]
+    directory_source_url_chunks = [
+        list(origin_url) + [chunks] for origin_url, chunks in origin_urls.items()
+    ]
     df = pd.DataFrame(directory_source_url_chunks, columns=["origin", "url", "chunks"])
     filename = f"{PGVECTOR_HOST} - {collection_name} - {datetime.now()}.csv"
     outpath = DIRECTORY_PATH / "logs" / filename

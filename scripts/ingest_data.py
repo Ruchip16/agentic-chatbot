@@ -102,7 +102,14 @@ def ingest(
     logger.info(
         f"Loading {len(all_documents)} embeddings to {PGVECTOR_HOST} - {PGVECTOR_DATABASE_NAME} - {collection_name}"
     )
-    db.add_documents(documents=all_documents)
+
+    # Add documents to DB in batches to accomodate the large numbers of parameters
+    batch_size = 150
+    for i in range(0, len(all_documents), batch_size):
+        batch = all_documents[i:i + batch_size]
+        logger.info(f"Ingesting batch {i // batch_size + 1} of {len(batch)} documents")
+        db.add_documents(documents=batch)
+
     logger.info(f"Successfully loaded {len(all_documents)} embeddings")
 
     directory_source_url_chunks = [
@@ -111,4 +118,5 @@ def ingest(
     df = pd.DataFrame(directory_source_url_chunks, columns=["origin", "url", "chunks"])
     filename = f"{PGVECTOR_HOST} - {collection_name} - {datetime.now()}.csv"
     outpath = DIRECTORY_PATH / "logs" / filename
+    outpath.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(outpath, index=False)

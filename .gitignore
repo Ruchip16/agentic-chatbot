@@ -10,3 +10,4 @@ __pycache__/
 *.db
 .mypy_cache/
 .cache/
+.DS_Store

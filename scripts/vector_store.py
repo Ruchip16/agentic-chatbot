@@ -7,7 +7,8 @@ from typing import Any, List
 import yaml
 
 from ingest_data import ingest
-from knowledge_source import fetchall as fetch_source
+# from knowledge_source import fetchall as fetch_source
+from knowledge_source import fetch_source
 from delete_knowledge import delete_knowledge
 
 logger = logging.getLogger(__name__)
@@ -58,9 +59,8 @@ def main(args: argparse.Namespace) -> None:
             metadata = collection.get("metadata", {})
             sources = collection.get("sources", [])
             meta_lookup: dict[pathlib.Path, dict[Any, Any]] = {}
-            # for source in sources:
-                # source_meta_lookup = fetch_source(**source)
-            source_meta_lookup = fetch_source()
+            for source in sources:
+                source_meta_lookup = fetch_source(**source)
             meta_lookup = meta_lookup | source_meta_lookup
             ingest(
                 meta_lookup=meta_lookup,

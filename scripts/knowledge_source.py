@@ -174,74 +174,109 @@
 #     return meta_lookup
 
 # TODO (@abhikdps): Remove the below code once the above one starts working and uncomment the above
+import pathlib
+import time
+import logging
+from typing import Any
+from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-import time
-import os
-from pathlib import Path
-from bs4 import BeautifulSoup
-import requests
-import json
 
-SOURCE_URL = "https://source.redhat.com"
-BASE_PATH = Path("source_repository")
+from constants import SOURCE_RESPOSITORY_PATH
 
-def setup_driver():
-    options = Options()
-    options.add_argument("--start-maximized")
-    # options.add_argument("--headless")  # Uncomment if you want headless
-    driver = webdriver.Chrome(options=options)
-    return driver
+logger = logging.getLogger(__name__)
 
-def login_to_source(driver):
-    driver.get(SOURCE_URL)
-    print("Log in manually if required... waiting 60s.")
-    time.sleep(60) # Give you time to log in manually if needed
-    # Optional: automate login with credentials if no 2FA
-    # driver.find_element(By.ID, "username").send_keys("your_username")
-    # ...
+class SourceScraper:
+    def __init__(self, base_url: str = "https://source.redhat.com/"):
+        chrome_options = Options()
+        chrome_options.add_argument("--start-maximized")
+        self.driver = webdriver.Chrome(options=chrome_options)
+        self.base_url = base_url
 
-def fetch_page_and_save(driver, relative_path: str, metadata: dict = {}):
-    full_url = f"{SOURCE_URL}{relative_path}"
-    driver.get(full_url)
-    time.sleep(2)
+        self.driver.get(self.base_url)
+        print("\n Please log in manually and press ENTER here once done...")
+        input()
+        print(" Login confirmed. Proceeding with scraping.")
 
-    # Grab content
-    html = driver.page_source
-    soup = BeautifulSoup(html, "html.parser")
+    def fetch_all_pages(self, url_fragment: str, recursive: bool = False):
+        url = self.base_url.rstrip("/") + url_fragment
+        self.driver.get(url)
+        time.sleep(3)
 
-    # Clean title for filename
-    title = soup.title.string.strip().replace(" ", "_").replace("/", "_")[:50]
-    filename = f"{title or 'page'}.html"
+        soup = BeautifulSoup(self.driver.page_source, "html.parser")
+        pages = [soup]
 
-    full_path = BASE_PATH / relative_path.strip("/") / filename
-    full_path.parent.mkdir(parents=True, exist_ok=True)
+        if recursive:
+            children_links = soup.select("a[href^='/']")
+            visited = set()
 
-    with open(full_path, "w", encoding="utf-8") as f:
-        f.write(html)
+            for link in children_links:
+                href = link.get("href")
+                full_url = self.base_url.rstrip("/") + href
+                if href and href.startswith("/") and full_url not in visited:
+                    visited.add(full_url)
+                    try:
+                        self.driver.get(full_url)
+                        time.sleep(2)
+                        sub_soup = BeautifulSoup(self.driver.page_source, "html.parser")
+                        pages.append(sub_soup)
+                    except Exception as e:
+                        logger.warning(f"Failed to visit {full_url}: {e}")
 
-    # Save metadata
-    metadata_file = full_path.with_suffix(".meta.json")
-    metadata["url"] = full_url
-    with open(metadata_file, "w", encoding="utf-8") as f:
-        json.dump(metadata, f, indent=2)
+        return pages
 
-    print(f"Saved: {full_path}")
+    def extract_attachments(self, soup: BeautifulSoup):
+        attachments = []
+        links = soup.select("a")
+        for link in links:
+            href = link.get("href")
+            if href and any(ext in href for ext in [".pdf", ".docx", ".xlsx"]):
+                attachments.append(href)
+        return attachments
 
-def fetchall():
-    driver = setup_driver()
-    try:
-        login_to_source(driver)
+    def save_page(self, soup: BeautifulSoup, path: pathlib.Path):
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(str(soup))
 
-        # Example paths (replace with your actual targets)
-        paths = [
-            "/departments",]
+    def download_attachments(self, attachments: list[str], base_path: pathlib.Path):
+        for link in attachments:
+            file_name = link.split("/")[-1]
+            full_path = base_path / file_name
+            try:
+                self.driver.get(link if link.startswith("http") else self.base_url.rstrip("/") + link)
+                with open(full_path, "wb") as f:
+                    f.write(self.driver.page_source.encode("utf-8"))
+            except Exception as e:
+                logger.warning(f"Failed to download attachment {link}: {e}")
 
-        for path in paths:
-            fetch_page_and_save(driver, path, metadata={"team": "DevTools"})
+    def scrape(self, url_fragment: str, recursive: bool, attachments: bool, metadata: dict[str, Any]):
+        meta_lookup = {}
+        pages = self.fetch_all_pages(url_fragment, recursive)
 
-    finally:
-        driver.quit()
+        for i, soup in enumerate(pages):
+            title = soup.title.string if soup.title else f"page_{i}"
+            safe_title = title.replace("/", "_").replace(" ", "_")[:50]
+            page_path = SOURCE_RESPOSITORY_PATH / url_fragment.strip("/") / f"{safe_title}.html"
+            page_path.parent.mkdir(parents=True, exist_ok=True)
 
-    return {}
+            self.save_page(soup, page_path)
+            file_metadata = metadata.copy()
+            file_metadata["url"] = self.base_url.rstrip("/") + url_fragment
+
+            if attachments:
+                attachment_links = self.extract_attachments(soup)
+                self.download_attachments(attachment_links, page_path.parent)
+
+            meta_lookup[page_path] = file_metadata
+
+        return meta_lookup
+
+def fetch_source(
+    url_fragment: str,
+    recursive: bool = False,
+    attachments: bool = True,
+    metadata: dict = {},
+    **kwargs,
+):
+    scraper = SourceScraper()
+    return scraper.scrape(url_fragment, recursive, attachments, metadata)

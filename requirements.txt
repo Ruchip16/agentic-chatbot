@@ -24,3 +24,7 @@ pyigloo @ git+https://github.com/xkahn/pyigloo.git
 langchain_huggingface
 langchain_postgres
 langchain_community
+types-beautifulsoup4 # can be removed after testing with igloo API
+hf_xet
+tf-keras
+selenium # can be removed after tesing with igloo API

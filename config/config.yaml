@@ -11,7 +11,7 @@ collections:
       key: "value"
     sources:
       - type: "source"
-        url_fragment: "/departments"
+        url_fragment: "/"
         recursive: true
         attachments: true
         metadata:

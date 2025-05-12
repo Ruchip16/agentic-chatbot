@@ -12,3 +12,4 @@ __pycache__/
 .cache/
 .DS_Store
 output*
+logs/

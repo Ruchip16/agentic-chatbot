@@ -92,6 +92,6 @@ if __name__ == "__main__":
         "--config",
         type=pathlib.Path,
         help="Path to config file.",
-        default=pathlib.Path("config.yaml"),
+        default=pathlib.Path("./config/config.yaml"),
     )
     main(parser.parse_args())

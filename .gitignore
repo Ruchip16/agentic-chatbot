@@ -12,4 +12,8 @@ __pycache__/
 .cache/
 .DS_Store
 output*
+<<<<<<< HEAD
 *.csv
+=======
+storage/*.json
+>>>>>>> 8d902546c2f7d4238e340aadff3f1a20bfb4fee7

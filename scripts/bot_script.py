@@ -7,9 +7,13 @@ from llama_index.core import (
     load_index_from_storage,
     Settings,
 )
-from llama_index.llms.ollama import Ollama
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.readers.file import PDFReader
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Config
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -20,7 +24,13 @@ async def build_and_save_index():
     """Builds the index from PDF files and saves it."""
     print("Loading PDF documents...")
     reader = PDFReader()
-    documents = reader.load_data(folder_path=DATA_DIR)
+    pdf_files = list(DATA_DIR.glob("**/*.pdf"))
+    
+    documents = []
+    for pdf_file in pdf_files:
+        documents.extend(reader.load_data(file=pdf_file))
+    
+    print(f"Loaded {len(documents)} document chunks from {len(pdf_files)} PDF files")
 
     print("Building index...")
     index = VectorStoreIndex.from_documents(documents)
@@ -31,7 +41,7 @@ async def build_and_save_index():
 
 async def load_or_build_index():
     """Loads existing index or builds a new one if not found."""
-    if os.path.exists(STORAGE_DIR):
+    if os.path.exists(STORAGE_DIR) or False:
         print(f"Loading existing index from {STORAGE_DIR}/...")
         storage_context = StorageContext.from_defaults(persist_dir=STORAGE_DIR)
         index = load_index_from_storage(storage_context)
@@ -41,8 +51,11 @@ async def load_or_build_index():
 
 async def main():
     # Step 1: Setup global Settings
-    Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-base-en-v1.5")
-    Settings.llm = Ollama(model="llama3.1", request_timeout=360.0)
+    Settings.embed_model = OpenAIEmbedding(api_key=os.getenv("OPENAI_API_KEY"))
+    Settings.llm = OpenAI(
+        api_key=os.getenv("OPENAI_API_KEY"),
+        model="gpt-4o-mini"
+    )
 
     # Step 2: Load or build the index
     index = await load_or_build_index()

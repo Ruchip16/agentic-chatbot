@@ -29,3 +29,6 @@ hf_xet
 tf-keras
 selenium # can be removed after tesing with igloo API
 pdfminer.six
+fastapi
+uvicorn
+python-dotenv

@@ -7,8 +7,7 @@ from typing import Any, List
 import yaml
 
 from ingest_data import ingest
-# from knowledge_source import fetchall as fetch_source
-from knowledge_source import fetch_source
+from knowledge_source import fetchall as fetch_source
 from delete_knowledge import delete_knowledge
 
 logger = logging.getLogger(__name__)
@@ -73,14 +72,19 @@ def main(args: argparse.Namespace) -> None:
                 collection_metadata=metadata,
             )
         except Exception as e:
-            logger.error("Failed to ingest collection %s: %s", collection.get("id", "unknown"), e)
+            logger.error(
+                "Failed to ingest collection %s: %s", collection.get("id", "unknown"), e
+            )
             errors.append(e)
         finally:
             delete_knowledge()
 
     if errors:
         error_messages = "\n".join(str(e) for e in errors)
-        raise RuntimeError(f"Ingest failed for {len(errors)} collection(s):\n{error_messages}")
+        raise RuntimeError(
+            f"Ingest failed for {len(errors)} collection(s):\n{error_messages}"
+        )
+
 
 if __name__ == "__main__":
     logging.basicConfig(

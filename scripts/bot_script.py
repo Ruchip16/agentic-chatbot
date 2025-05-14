@@ -20,6 +20,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT_DIR / "data"
 STORAGE_DIR = ROOT_DIR / "storage"
 
+
 async def build_and_save_index():
     """Builds the index from PDF files and saves it."""
     print("Loading PDF documents...")
@@ -39,6 +40,7 @@ async def build_and_save_index():
     index.storage_context.persist(persist_dir=STORAGE_DIR)
     return index
 
+
 async def load_or_build_index():
     """Loads existing index or builds a new one if not found."""
     if os.path.exists(STORAGE_DIR) or False:
@@ -48,6 +50,7 @@ async def load_or_build_index():
     else:
         index = await build_and_save_index()
     return index
+
 
 async def main():
     # Step 1: Setup global Settings

@@ -14,6 +14,7 @@ signing_secret = "165bb0d941425645b37d1ff7a6d77f30"
 client = WebClient(token=slack_token)
 verifier = SignatureVerifier(signing_secret)
 
+
 @app.route("/slack/commands", methods=["POST"])
 def slack_commands():
     data = request.form
@@ -24,6 +25,7 @@ def slack_commands():
             "text": "Pong! 🚀"
         })
     return "Unknown command", 200
+
 
 @app.route("/slack/prompt", methods=["POST"])
 def slack_prompt():
@@ -41,6 +43,7 @@ def slack_prompt():
         "response_type": "in_channel",  # or "ephemeral" for private replies
         "text": f"<@{user_id}> {response}"
     })
+
 
 if __name__ == "__main__":
     app.run(debug=True,port=3000)

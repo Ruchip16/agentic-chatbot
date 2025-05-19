@@ -1,9 +1,7 @@
 from flask import Flask, request, jsonify
 import os
-import slack_sdk
 from slack_sdk.web import WebClient
 from slack_sdk.signature import SignatureVerifier
-# from rag_model import get_rag_response
 
 from dotenv import load_dotenv
 
@@ -12,8 +10,8 @@ load_dotenv()
 
 app = Flask(__name__)
 
-slack_token = "xoxb-8848313668450-8848330175890-NxONtME4RybfiHlAZfIDsJVf"
-signing_secret = "165bb0d941425645b37d1ff7a6d77f30"
+slack_token = os.environ.get("SLACK_APP_SECRET", default="")
+signing_secret = os.environ.get("SLACK_SIGNING_SECRET", default="")
 
 client = WebClient(token=slack_token)
 verifier = SignatureVerifier(signing_secret)
@@ -27,7 +25,7 @@ def get_rag_response(query: str) -> str:
     import json
 
     # Configure the endpoint URL - adjust host/port as needed
-    agent_service_url = f"{os.getenv("AGENT_SERVICE_URL")}/query"
+    agent_service_url = f"{os.getenv('AGENT_SERVICE_URL')}/query"
 
     try:
         # Make POST request to the agent service
